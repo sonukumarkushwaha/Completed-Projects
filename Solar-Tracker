@@ -1,0 +1,83 @@
+#include <Servo.h>
+Servo servo1;
+Servo servo2;
+
+int LDR1 = A1;
+int LDR2 = A2;
+int LDR3 = A4;
+int LDR4 = A3;
+int error1 =0;
+int error2 =0;
+int LDRLeft = 0;
+int LDRRight = 0;
+int LDRTOP = 0;
+int LDRBOTTOM = 0;
+int ServoPos1 = 0;
+int ServoPos2 = 0;
+
+
+void setup() {
+  // put your setup code here, to run once:
+  
+Serial.begin(9600);
+servo1.attach(11);
+servo2.attach(10);
+
+}
+
+void loop() {
+   // while(!Serial.available());
+    //val=Serial.read();
+    LDRLeft = analogRead(LDR1);
+    LDRRight = analogRead(LDR2);
+     LDRTOP = analogRead(LDR3);
+    LDRBOTTOM = analogRead(LDR4);
+
+  error1 = LDRLeft - LDRRight;          //Determine the difference between the two sensors.
+  if(error1>60)        //If the error1 is positive and greater than 15 then move the servo1 in the east direction
+  {
+    if(ServoPos1<=100)  //Check that the servo1 is not at the end of its limit in the east direction
+    {
+      ServoPos1++;
+      servo1.write(ServoPos1);  //Move the servo1 to the east
+    }
+  }
+  else if(error1<-40)  //If the error1 is negative and less than -15 then move the servo1 in the west direction
+  {
+    if(ServoPos1>20)  //Check that the servo1 is not at the end of its limit in the west direction
+    {
+      ServoPos1--;
+      servo1.write(ServoPos1);  //Move the servo1 to the west
+    }
+  }
+
+
+error2 = LDRTOP - LDRBOTTOM;          //Determine the difference between the two sensors.
+  if(error2>80)        //If the error1 is positive and greater than 15 then move the servo1 in the east direction
+  {
+    if(ServoPos2<=160)  //Check that the servo1 is not at the end of its limit in the east direction
+    {
+      ServoPos2++;
+      servo2.write(ServoPos2);  //Move the servo1 to the east
+    }
+  }
+  else if(error2<-80)  //If the error1 is negative and less than -15 then move the servo1 in the west direction
+  {
+    if(ServoPos2>20)  //Check that the servo1 is not at the end of its limit in the west direction
+    {
+      ServoPos2--;
+      servo2.write(ServoPos2);  //Move the servo1 to the west
+    }
+  }
+ 
+    
+//Serial.println("Left");
+//Serial.println(LDRLeft);
+
+Serial.println("difference");
+
+Serial.println(LDR2);
+
+ 
+
+}
