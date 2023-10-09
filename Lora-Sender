@@ -1,0 +1,285 @@
+
+
+#include <SPI.h>
+#include <LoRa.h>
+#include <MQUnifiedsensor.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#define SEALEVELPRESSURE_HPA (1013.25)
+const int analogPin = 35; // A0 pin (GPIO36)
+Adafruit_BME280 bme; // I2C
+unsigned long delayTime;
+
+//define the pins used by the transceiver module
+#define ss 5
+#define rst 14
+#define dio0 2
+
+#define direction 26
+#define wind_speed 25
+
+// #define placa "ESP-32"
+// #define Voltage_Resolution 3.3
+// #define pin 35 //Analog input 0 of your arduino
+// #define type "MQ-135" //MQ135
+// #define ADC_Bit_Resolution 12 // For arduino UNO/MEGA/NANO
+// #define RatioMQ135CleanAir 3.6//RS / R0 = 3.6 ppm  
+
+// double          CO2          =   (0);
+
+// MQUnifiedsensor MQ135(placa, Voltage_Resolution, ADC_Bit_Resolution, pin, type);
+
+int counter = 0;
+int sensorValue;
+int count=0;
+int xx;
+
+void setup() {
+  pinMode(analogPin, INPUT);
+  pinMode(direction, INPUT);
+  pinMode(wind_speed, INPUT);
+
+  //initialize Serial Monitor
+  Serial.begin(115200);
+  while (!Serial);
+  Serial.println("LoRa Sender");
+
+  //setup LoRa transceiver module
+  LoRa.setPins(ss, rst, dio0);
+  
+  //replace the LoRa.begin(---E-) argument with your location's frequency 
+  //433E6 for Asia
+  //866E6 for Europe
+  //915E6 for North America
+  while (!LoRa.begin(915E6)) {
+    Serial.println(".");
+    delay(500);
+  }
+   // Change sync word (0xF3) to match the receiver
+  // The sync word assures you don't get LoRa messages from other LoRa transceivers
+  // ranges from 0-0xFF
+  LoRa.setSyncWord(0xF3);
+  Serial.println("LoRa Initializing OK!");
+
+  Serial.println(F("BME280 test"));
+
+  bool status;
+
+  // default settings
+  // (you can also pass in a Wire library object like &Wire2)
+  status = bme.begin(0x76);  
+  if (!status) {
+    Serial.println("Could not find a valid BME280 sensor, check wiring!");
+    while (1);
+  }
+
+  Serial.println("-- Default Test --");
+  delayTime = 1000;
+  pinMode(35,INPUT);
+
+  Serial.println();
+
+  /////////////////////////////MQ 135//////////////
+
+  // MQ135.setRegressionMethod(1); //_PPM =  a*ratio^b
+ 
+  // MQ135.init(); 
+  // Serial.print("Calibrating please wait.");
+  // float calcR0 = 0;
+  // for(int i = 1; i<=10; i ++)
+  // {
+  //   MQ135.update(); // Update data, the arduino will be read the voltage on the analog pin
+  //   calcR0 += MQ135.calibrate(RatioMQ135CleanAir);
+  //   Serial.print(".");
+  // }
+  // MQ135.setR0(calcR0/10);
+  // Serial.println("  done!.");
+  
+  // if(isinf(calcR0)) {Serial.println("Warning: Conection issue founded, R0 is infite (Open circuit detected) please check your wiring and supply"); while(1);}
+  // if(calcR0 == 0){Serial.println("Warning: Conection issue founded, R0 is zero (Analog pin with short circuit to ground) please check your wiring and supply"); while(1);}
+  // /*****************************  MQ CAlibration ********************************************/ 
+  // MQ135.serialDebug(false);
+  
+  //////////////////////////////
+
+
+  
+}
+void isr(){
+  count++;
+}
+void loop() {
+  ///-------------------------mq135---------------------
+    sensorValue = analogRead(analogPin);
+   Serial.print("analog value ");
+   Serial.println(sensorValue);
+   xx =analogRead(direction);
+
+   Serial.print("Direction = ");
+   Serial.println(xx);
+
+  
+   for(int i=0;i<1000;i++){
+   attachInterrupt(25, isr, RISING);
+   }
+    Serial.print("wind speed = ");
+   Serial.println(count);
+  
+  float voltage = sensorValue * (5.0 / 1023.0); // Convert sensor value to voltage (assuming 5V reference)
+  
+  float co2Value = getCO2Value(voltage); // Call a function to calculate CO2 value
+  float nh3Value = getNH3Value(voltage); // Call a function to calculate NH3 value
+  float noxValue = getNOxValue(voltage); // Call a function to calculate NOx value
+  
+  Serial.print("CO2 Value: ");
+  Serial.print(co2Value);
+  Serial.println(" ppm");
+  
+  Serial.print("Ammonia Value: ");
+  Serial.print(nh3Value);
+  Serial.println(" ppm");
+  
+  Serial.print("NOx Value: ");
+  Serial.print(noxValue);
+  Serial.println(" ppm");
+  
+  delay(2000); // Delay for 2 seconds before taking the next reading
+
+
+
+//---------------------------------------------------------
+
+
+  ////////////MQ135///////////
+ 
+  //   MQ135.update(); // Update data, the arduino will be read the voltage on the analog pin
+ 
+  // MQ135.setA(110.47); MQ135.setB(-2.862);
+  // CO2 = MQ135.readSensor();
+
+  // MQ135.setA(605.18); MQ135.setB(-3.937);
+  // float CO = MQ135.readSensor();
+
+  // MQ135.setA(77.255); MQ135.setB(-3.18);
+  // float Alcohol = MQ135.readSensor();
+
+  // MQ135.setA(44.947); MQ135.setB(-3.445);
+  // float Toluene = MQ135.readSensor();
+
+  // MQ135.setA(102.2 ); MQ135.setB(-2.473);
+  // float NH4 = MQ135.readSensor();
+
+  // MQ135.setA(34.668); MQ135.setB(-3.369);
+  // float Acetone = MQ135.readSensor();
+  
+  // Serial.print("CO2: ");
+  // Serial.println(CO2);
+  
+  // Serial.print("Carbon mono-oxide: ");
+  // Serial.println(CO);
+  
+  // Serial.print("Toluene : ");
+  // Serial.println(Toluene);
+
+  // Serial.print("NH4 : ");
+  // Serial.println(NH4);
+
+  // Serial.print("Acetone: ");
+  // Serial.println(Acetone);
+
+  // Serial.print("Alcohol : ");
+  // Serial.println(Alcohol);
+
+  
+  // Serial.println("Sending data...");
+  
+  //////////////////////////////////////////////////////
+
+  /////////BME//////////
+   
+  printValues();
+  delay(delayTime);
+}
+float getCO2Value(float voltage) {
+  // Add your calculation or calibration formula to convert voltage to CO2 value
+  // You may need to refer to the MQ135 datasheet or calibration information
+  
+  // Example calculation:
+  float co2Value = voltage * 400.0 / 5.0; // Arbitrary scaling factor
+  
+  return co2Value;
+}
+
+float getNH3Value(float voltage) {
+  // Add your calculation or calibration formula to convert voltage to NH3 value
+  // You may need to refer to the MQ135 datasheet or calibration information
+  
+  // Example calculation:
+  float nh3Value = voltage * 50.0; // Arbitrary scaling factor
+  
+  return nh3Value;
+}
+
+float getNOxValue(float voltage) {
+  // Add your calculation or calibration formula to convert voltage to NOx value
+  // You may need to refer to the MQ135 datasheet or calibration information
+  
+  // Example calculation:
+  float noxValue = voltage * 25.0; // Arbitrary scaling factor
+  
+  return noxValue;
+}
+
+void printValues() {
+  Serial.print("Temperature = ");
+  Serial.print(bme.readTemperature());
+  Serial.println(" *C");
+  
+  // Convert temperature to Fahrenheit
+  /*Serial.print("Temperature = ");
+  Serial.print(1.8 * bme.readTemperature() + 32);
+  Serial.println(" *F");*/
+  
+  Serial.print("Pressure = ");
+  Serial.print(bme.readPressure() / 100.0F);
+  Serial.println(" hPa");
+
+  Serial.print("Approx. Altitude = ");
+  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+  Serial.println(" m");
+
+  Serial.print("Humidity = ");
+  Serial.print(bme.readHumidity());
+  Serial.println(" %");
+
+  Serial.println();
+
+  //////////////
+  Serial.print("Sending packet: ");
+  Serial.println(counter);
+
+  //Send LoRa packet to receiver
+  LoRa.beginPacket();
+
+  LoRa.print(2);//----------------------------ID OF LORA
+  LoRa.print(bme.readHumidity()+17);
+  LoRa.print(bme.readTemperature());
+  LoRa.print(bme.readPressure() / 100.0F);
+  LoRa.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+  LoRa.print(sensorValue);
+  LoRa.print(count);
+  LoRa.print(xx);
+  
+  
+  
+ 
+
+  
+  LoRa.endPacket();
+
+  counter++;
+  count =0;
+
+  //delay(1000);
+}
