@@ -1,0 +1,394 @@
+
+
+#include <SPI.h>
+#include <LoRa.h>
+
+//define the pins used by the transceiver module
+#define ss 5
+#define rst 14
+#define dio0 2
+#define MAX_STRING_LENGTH 30
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#include <WiFi.h>
+// #include <FirebaseESP32.h>
+
+
+// #define FIREBASE_HOST "https://lora-wan-a0b25-default-rtdb.asia-southeast1.firebasedatabase.app/"
+// #define FIREBASE_AUTH "AIzaSyCL13bMcLDfNf3p0q2qH0Z4jzDMAWJmlTw"
+// #define WIFI_SSID "sonu"
+// #define WIFI_PASSWORD "12345678900"
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+//--------------------------------------MQTT-UBIDOT------------
+// #include "UbidotsEsp32Mqtt.h"
+
+
+// const char *UBIDOTS_TOKEN = "BBFF-c9LqkMEQ5BMa8JVEsJMQ8Rhmg5B1B5";  // Put here your Ubidots TOKEN
+// const char *WIFI_SSID = "Lifetrust_Office";      // Put here your Wi-Fi SSID
+// const char *WIFI_PASS = "Lifetrust@123";      // Put here your Wi-Fi password
+// const char *DEVICE_LABEL = "lorawan";   // Put here your Device label to which data  will be published
+//                                  // Put here your Variable label to which data  will be published
+// const int PUBLISH_FREQUENCY = 5000; // Update rate in milliseconds
+
+//  const char *VARIABLE_LABEL = "humidity";
+//  const char *VARIABLE_LABEL1 = "temprature";
+//  const char *VARIABLE_LABEL2= "atmospheric-pressure";
+//  const char *VARIABLE_LABEL3 = "altitude";
+//  const char *VARIABLE_LABEL4= "moisture-relay";
+//  const char *VARIABLE_LABEL5 = "id-1";
+//  const char *VARIABLE_LABEL6 = "relay_01";
+
+
+
+
+// unsigned long timer;
+
+// Ubidots ubidots(UBIDOTS_TOKEN);
+
+// void callback(char *topic, byte *payload, unsigned int length)
+// {
+// Serial.print("Message arrived [");
+// Serial.print(topic);
+// Serial.print("] ");
+//   for (int i = 0; i < length; i++)
+
+//   {
+//     Serial.print((char)payload[i]);
+
+//   }
+//   Serial.println();
+
+// }
+//=------------------------------------MQTT UBIDOTS END ------------------------
+//-------------------------ubidots API level------------------------------------
+
+
+
+//---------------------------------data store variables ----------------------------------------------
+
+char Humid[6];
+char Temp[6];
+char mist[6];
+char pre[6];
+char alt[6];
+char aqi[3];
+char Relay;
+int id1;
+
+
+int previd;
+
+
+
+
+void setup() {
+  //initialize Serial Monitor
+  Serial.begin(115200);
+
+
+ 
+
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(2000);
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(10, 0);
+  // Display static text
+  display.println("LoRa_Wan");
+  display.display(); 
+  //-------------------------------------MQTT--------------
+   // ubidots.setDebug(true);  // uncomment this to make debug messages available
+//  ubidots.connectToWifi(WIFI_SSID, WIFI_PASS);
+//  ubidots.setCallback(callback);
+//  ubidots.setup();
+//  ubidots.reconnect();
+//   timer = millis();
+  //-------------------------------------------------------
+  while (!Serial);
+  Serial.println("LoRa Receiver");
+
+  //setup LoRa transceiver module
+  LoRa.setPins(ss, rst, dio0);
+  
+  //replace the LoRa.begin(---E-) argument with your location's frequency 
+  //433E6 for Asia
+  //866E6 for Europe
+  //915E6 for North America
+  while (!LoRa.begin(915E6)) {
+    Serial.println(".");
+    delay(500);
+  }
+   // Change sync word (0xF3) to match the receiver
+  // The sync word assures you don't get LoRa messages from other LoRa transceivers
+  // ranges from 0-0xFF
+  LoRa.setSyncWord(0xF3);
+  Serial.println("LoRa Initializing OK!");
+  display.setCursor(10, 20);
+  display.println("Initializing OK!");
+ 
+
+  
+  display.display(); 
+  delay(800);
+  //----------------------
+}
+
+void loraread(){
+  
+}
+
+void loop() {
+
+  
+  int packetSize = LoRa.parsePacket();
+
+  if (packetSize) {
+    char receivedString[MAX_STRING_LENGTH + 1]; // +1 for null terminator
+    int index = 0;
+
+    while (LoRa.available()) {
+      char character = (char)LoRa.read();
+
+      if (index < MAX_STRING_LENGTH) {
+        receivedString[index] = character;
+        index++;
+      }
+    }
+
+    receivedString[index] = '\0'; // Add null terminator to mark the end of the string
+    
+    // Process the received string (iterate over the array)
+    for (int i = 0; i < index; i++) {
+      char currentCharacter = receivedString[i];
+      Serial.print(currentCharacter);
+      // Perform additional processing or actions with the character here
+    }
+    
+    
+
+    Serial.println();
+//----------------------------------------------------------ID
+    char id=receivedString[0];
+
+    
+     id1=id - '0'; // converted char into int 
+
+
+    if (id1==previd) {
+    return; // Exit the current iteration of loop() and start again
+  }
+previd =id1;
+    if(id1==1){
+
+      Serial.print("ID = ");
+    Serial.println(id1);
+    display.clearDisplay();
+    display.setCursor(20, 0);
+    display.print("id = ");
+  display.println(id1);
+  display.display(); 
+
+      //-------------------------------------------------------HUMIDITY    
+//char Humid[6];
+strncpy(Humid, receivedString + 1, 5);
+Humid[5] = '\0'; // Add null terminator
+Serial.print("Humid: ");
+Serial.println(Humid);
+display.setCursor(0, 16);
+  display.print("Humid =");
+  display.print(Humid);
+  display.display(); 
+//------------------------------------------------------TEMPRATURE
+//char Temp[6];
+strncpy(Temp, receivedString + 6, 11);
+Temp[5] = '\0'; // Add null terminator
+Serial.print("Temprature: ");
+Serial.println(Temp);
+display.setCursor(0, 26);
+  display.print("Temp = ");
+  display.print(Temp);
+  display.display(); 
+//-------------------------------------------------------RELAY
+     Relay=receivedString[11];
+
+    Serial.print("Motor status = ");
+    Serial.println(Relay);
+    int alt1 = (int)Relay;
+    display.setCursor(0, 36);
+  display.print("Motor = ");
+ // display.print(alt1);
+
+  if(alt1==49){
+    display.println("OFF");
+  display.display(); }
+  else{
+    display.println("ON");
+  display.display(); }
+  
+  
+  display.display(); 
+//----------------------------------------------------SOIL MOISTURE 
+   // char mist[6];
+strncpy(mist, receivedString + 12, 16);
+mist[4] = '\0'; // Add null terminator
+Serial.print("Soil moisture: ");
+Serial.println(mist);
+display.setCursor(0, 48);
+  display.print("Mist = ");
+  display.print(mist);
+  display.display(); 
+//------------------------------------------------------ 
+
+delay(2000);
+    }
+
+    if(id1==2){
+
+ 
+
+      Serial.print("ID = ");
+    Serial.println(id1);
+    display.clearDisplay();
+    display.setCursor(20, 0);
+    display.print("id = ");
+  display.println(id1);
+  display.display(); 
+      //-------------------------------------------------------HUMIDITY    
+//char Humid[6];
+strncpy(Humid, receivedString + 1, 5);
+Humid[5] = '\0'; // Add null terminator
+Serial.print("Humid: ");
+Serial.println(Humid);
+float pre1 = atof(Humid);
+pre1=pre1-20;
+//int HUmid=Humid-20;
+display.setCursor(0, 16);
+  display.print("Humid =");
+  display.print(pre1);
+  display.display(); 
+//------------------------------------------------------TEMPRATURE
+//char Temp[6];
+strncpy(Temp, receivedString + 6, 11);
+Temp[5] = '\0'; // Add null terminator
+Serial.print("Temprature: ");
+Serial.println(Temp);
+display.setCursor(0, 26);
+  display.print("Temp = ");
+  display.print(Temp);
+  display.display(); 
+
+//----------------------------------------------------pressure
+    //char pre[6];
+strncpy(pre, receivedString + 11, 16);
+pre[6] = '\0'; // Add null terminator
+Serial.print("Atmospheric pressure : ");
+Serial.println(pre);
+display.setCursor(0, 36);
+  display.print("At.Pre = ");
+  display.print(pre);
+  display.display(); 
+//-------------------------------------------------altiude----- 
+
+    //char alt[6];
+strncpy(alt, receivedString + 17, 22);
+alt[6] = '\0'; // Add null terminator
+Serial.print("Altitude : ");
+Serial.println(alt);
+display.setCursor(0, 48);
+  display.print("Alt = ");
+  display.print(alt);
+  display.display(); 
+//--------------------------------------------------AQI---- 
+strncpy(aqi, receivedString + 23, 25);
+aqi[3] = '\0'; // Add null terminator
+Serial.print("AQI : ");
+Serial.println(aqi);
+
+
+
+//------------------------------------------------
+ delay(3500);
+ display.clearDisplay();
+ display.setCursor(20, 0);
+    display.print("id = ");
+  display.println(id1);
+  display.display(); 
+
+  display.setCursor(0, 16);
+  display.print("AQI =");
+  display.print("63.03");
+  display.display(); 
+
+  display.setCursor(0, 26);
+  display.print("Wind dir. = ");
+  
+  display.print(" N ");
+  display.display(); 
+
+  display.setCursor(0, 36);
+  display.print("Wind Speed = ");
+ 
+  display.print("0");
+  display.print("  m/h");
+  display.display(); 
+  //----------------------------------------------------------------------------------------fire base
+
+delay(3500);
+    }
+
+    
+  //   else{
+  //     delay(3500);
+  //     display.clearDisplay();
+
+  // display.setCursor(0, 26);
+  // display.print("both node not connected ");
+  // display.display(); 
+
+  //   }
+
+
+  }
+//----------------------------MQTT-DATA-UPDATE----------------------------
+//  if (!ubidots.connected())
+//  {
+//     ubidots.reconnect();
+//   }
+//   if (abs(millis() - timer) > PUBLISH_FREQUENCY) // triggers the routine every 5 seconds
+//   {
+//     // float value = analogRead(analogPin);
+//      float Humid1 = atof(Humid);
+//      float Temp1 = atof(Temp);
+//      float pre1 = atof(pre);
+//      float alt1 = atof(alt);
+//      float mist1 = atof(mist);
+
+//      ubidots.add(VARIABLE_LABEL, Humid1);
+//      ubidots.add(VARIABLE_LABEL1, Temp1);// Insert your variable Labels and the value to be sent
+//      ubidots.add(VARIABLE_LABEL2, pre1);
+//      ubidots.add(VARIABLE_LABEL3, alt1);
+//      ubidots.add(VARIABLE_LABEL4, mist1);
+//      ubidots.add(VARIABLE_LABEL5, id1);
+//      ubidots.add(VARIABLE_LABEL6, Relay);
+     
+//     ubidots.publish(DEVICE_LABEL);
+//    timer = millis();
+//   }
+//   ubidots.loop();
+//------------------------------------------------------------------------
+
+}
